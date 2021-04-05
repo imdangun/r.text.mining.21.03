@@ -8,6 +8,7 @@ library(stringr)
 library(tidytext)
 library(textclean)
 library(ggplot2)
+library(tidyr)
 
 dic = read_csv('knu_sentiment_lexicon.csv')
 
@@ -78,4 +79,94 @@ ggplot(top10_sentiment, aes(x=reorder(word, n), y=n, fill=sentiment)) +
   scale_y_continuous(expand=expansion(mult=c(0.05, 0.15))) +
   labs(x=NULL)
   
-  
+score_comment = word_comment %>%
+  group_by(id, reply) %>%
+  summarise(score=sum(polarity)) %>%
+  ungroup()
+
+score_comment %>% select(score, reply)
+
+score_comment %>% select(score, reply) %>% arrange(-score)
+
+score_comment %>% select(score, reply) %>% arrange(score)
+
+score_comment %>% count(score) %>% print(n=Inf)
+
+score_comment = score_comment %>%
+  mutate(sentiment=ifelse(score >= 1, 'pos',
+                  ifelse(score <= -1, 'neg', 'neu')))
+
+frequency_score = score_comment %>%
+  count(sentiment) %>%
+  mutate(ratio = n/sum(n) * 100)
+
+frequency_score
+
+ggplot(frequency_score, aes(x=sentiment, y=n, fill=sentiment)) +
+  geom_col() +
+  geom_text(aes(label=n), vjust=-0.3) +
+  scale_x_discrete(limits=c('pos', 'neu', 'neg'))
+
+score_comment %>% count(score) %>% print(n=Inf)
+
+score_comment = score_comment %>%
+  mutate(sentiment = ifelse(score >= 1, 'pos',ifelse(score <= -1, 'neg', 'neu')))
+
+score_comment
+
+frequency_score = score_comment %>%
+  count(sentiment) %>%
+  mutate(ratio = n/sum(n) * 100)
+
+ggplot(frequency_score, aes(x=sentiment, y=n, fill=sentiment)) +
+  geom_col() +
+  geom_text(aes(label=n), vjust=-0.3) +
+  scale_x_discrete(limits=c('pos', 'neu', 'neg'))
+
+df = tibble(country=c('Korea', 'Korea', 'Japen', "Japen"),
+            sex=c('M', 'F', 'M', 'F'),
+            ratio=c(60, 40, 30, 70))
+df
+
+ggplot(df, aes(x=country, y=ratio, fill=sex)) + geom_col()
+
+ggplot(df, aes(x=country, y=ratio, fill=sex)) +
+  geom_col() +
+  geom_text(aes(label=paste0(ratio, '%')),
+            position=position_stack(vjust=0.5))
+
+frequency_score$dummy = 0
+
+ggplot(frequency_score, aes(x=dummy, y=ratio, fill=sentiment)) +
+  geom_col() +
+  geom_text(aes(label=paste0(round(ratio, 1), '%')),
+            position=position_stack(vjust=0.5)) +
+            theme(axis.title.x=element_blank(),
+                  axis.text.x=element_blank(),
+                  axis.ticks.x=element_blank())
+
+comment = score_comment %>%
+  unnest_tokens(input=reply, output=word, token='words', drop=F) %>%
+  filter(str_detect(word, '[가-힣]') & str_count(word) >= 2)
+
+frequency_word = comment %>% count(sentiment, word, sort=T)
+
+frequency_word %>% filter(sentiment=='pos')
+
+frequency_word %>% filter(sentiment == 'neg')
+
+comment_wide = frequency_word %>%
+  filter(sentiment != 'neu') %>%
+  pivot_wider(names_from=sentiment, values_from=n, values_fill=list(n=0))
+
+comment_wide
+
+comment_wide = comment_wide %>%
+  mutate(log_odds_ratio=log(((pos + 1) / (sum(pos + 1))) / 
+                            ((neg + 1) / (sum(neg + 1)))))
+
+comment_wide
+
+top10 = comment_wide %>%
+  group_by(sentiment=ifelse(log_odds_ratio > 0, 'pos', 'neg')) %>%
+  slice_max(abs(log_odds_ratio), n=10, with_ties=F)
