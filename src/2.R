@@ -2,6 +2,7 @@ getwd()
 setwd('src')
 
 install.packages('multilinguer')
+library(multilinguer)
 install_jdk()
 
 install.packages('stringr')

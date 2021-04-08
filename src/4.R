@@ -170,3 +170,108 @@ comment_wide
 top10 = comment_wide %>%
   group_by(sentiment=ifelse(log_odds_ratio > 0, 'pos', 'neg')) %>%
   slice_max(abs(log_odds_ratio), n=10, with_ties=F)
+
+top10 %>% print(n=Inf)
+
+ggplot(top10, aes(x=reorder(word, log_odds_ratio),
+                  y=log_odds_ratio,
+                  fill=sentiment)) +
+  geom_col() +
+  coord_flip() +
+  labs(x=NULL) 
+
+score_comment %>%
+  filter(str_detect(reply, '소름')) %>%
+  select(reply)
+
+score_comment %>%
+  filter(str_detect(reply, '미친')) %>%
+  select(reply)
+
+dic %>% filter(word %in% c('소름', '소름이', '미친'))
+
+new_dic = dic %>%
+  mutate(polarity = ifelse(word %in% c('소름', '소름이', '미친'), 2, polarity))
+
+new_dic %>% filter(word %in% c('소름', '소름이', '미친'))
+
+new_word_comment = word_comment %>%
+  select(-polarity) %>%
+  left_join(new_dic, by='word') %>%
+  mutate(polarity=ifelse(is.na(polarity), 0, polarity))
+
+new_score_comment = new_word_comment %>%
+  group_by(id, reply) %>%
+  summarise(score=sum(polarity)) %>%
+  ungroup()
+
+new_score_comment %>%
+  select(score, reply) %>%
+  arrange(-score)
+
+new_score_comment = new_score_comment %>%
+  mutate(sentiment=ifelse(score >= 1, 'pos', 
+                    ifelse(score <= -1, 'neg', 'neu')))
+
+score_comment %>% count(sentiment) %>% mutate(ratio = n/sum(n)*100)
+
+new_score_comment %>% count(sentiment) %>% mutate(ratio = n/sum(n)*100)
+
+word = '소름|소름이|미친'
+
+score_comment %>% filter(str_detect(reply, word)) %>% count(sentiment)
+
+new_score_comment %>% filter(str_detect(reply, word)) %>% count(sentiment)
+
+new_word = tibble(word=c('쩐다', '핵노잼'), polarity=c(2, -2))
+newword_dic = bind_rows(dic, new_word)
+
+new_comment = new_score_comment %>%
+  unnest_tokens(input=reply, output=word, token='words', drop=F) %>%
+  filter(str_detect(word, '[가-힣]') & str_count(word) >= 2) 
+
+new_frequency_word = new_comment %>%
+  count(sentiment, word, sort=T)
+
+new_comment_wide = new_frequency_word %>%
+  filter(sentiment != 'neu') %>%
+  pivot_wider(names_from=sentiment, values_from=n, values_fill=list(n=0))
+
+new_comment_wide = new_comment_wide %>%
+  mutate(log_odds_ratio = log(((pos + 1) / (sum(pos + 1))) /
+                              ((neg + 1) / (sum(neg + 1)))))
+
+new_top_10 = new_comment_wide %>%
+  group_by(sentiment=ifelse(log_odds_ratio > 0, 'pos', 'neg')) %>%
+  slice_max(abs(log_odds_ratio), n=10, with_ties=F)
+
+ggplot(new_top10, aes(x=reorder(word, log_odds_ratio),
+                      y=log_odds_ratio,
+                      fill=sentiment)) +
+  geom_col() +
+  coord_flip() +
+  labs(x=NULL)
+
+new_score_comment %>%
+  filter(sentiment == 'pos' & str_detect(reply, '축하')) %>%
+  select(reply)
+
+new_score_comment %>% 
+  filter(sentiment == 'pos' & str_detect(reply, '소름')) %>%
+  select(reply)
+
+new_score_comment %>% 
+  filter(sentiment == 'neg' & str_detect(reply, '좌빨')) %>%
+  select(reply)
+
+new_score_comment %>%
+  filter(sentiment == 'neg' & str_detect(reply, '못한')) %>%
+  select(reply)
+
+top10 %>% 
+  select(-pos, -neg) %>%
+  arrange(-log_odds_ratio) %>%
+  print(n=Inf)
+
+new_comment_wide %>% filter(word == '미친')
+
