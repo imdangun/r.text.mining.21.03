@@ -252,6 +252,65 @@ bigram_comment = line_comment %>%
 
 bigram_comment
 
-bigram_seperated = bigram_comment %>%
+bigram_separated = bigram_comment %>%
   separate(bigram, c('word1', 'word2'), sep=' ')
+
+bigram_separated
+
+pair_bigram = bigram_separated %>%
+  count(word1, word2, sort=T) %>%
+  na.omit()
+
+pair_bigram
+
+pair %>% filter(item1 == '대한민국')
+
+pair_bigram %>% filter(word1 == '대한민국')
+
+pair %>% filter(item1 == '아카데미')
+
+pair_bigram %>% filter(word1 == '아카데미')
+
+graph_bigram = pair_bigram %>%
+  filter(n >= 8) %>%
+  as_tbl_graph()
+
+set.seed(1234)
+word_network(graph_bigram)
+
+bigram_separated = bigram_separated %>%
+  mutate(word1=ifelse(str_detect(word1, '대단'), '대단', word1),
+         word2=ifelse(str_detect(word2, '대단'), '대단', word2),
+         word1=ifelse(str_detect(word1, '자랑'), '자랑', word1),
+         word2=ifelse(str_detect(word2, '자랑'), '자랑', word2),
+         word1=ifelse(str_detect(word1, '짝짝짝'), '짝짝짝', word1),
+         word2=ifelse(str_detect(word2, '짝짝짝'), '짝짝짝', word2)) %>%
+  filter(word1 != word2)
+
+pair_bigram = bigram_separated %>%
+  count(word1, word2, sort=T) %>%
+  na.omit()
+
+bigram_separated_new = bigram_separated %>%
+  mutate_at(vars('word1', 'word2'),
+            ~ case_when(
+                str_detect(., '대단') ~ '대단',
+                str_detect(., '자랑') ~ '자랑',
+                str_detect(., '짝짝짝') ~ '짝짝짝',
+                T ~ .))
+
+set.seed(1234)
+graph_bigram = pair_bigram %>%
+  filter(n >= 8) %>%
+  as_tbl_graph(directed=F) %>%
+  mutate(centrality=centrality_degree(),
+         group=as.factor(group_infomap()))
+
+set.seed(1234)
+ggraph(graph_bigram, layout='fr') +
+  geom_edge_link(color='gray50', alpha=0.5) +
+  geom_node_point(aes(size=centrality, color=group), show.legend=F) +
+  scale_size(range=c(4, 8)) +
+  geom_node_text(aes(label=name), repel=T, size=5, family='nanumgothic') +
+  theme_graph()
 
